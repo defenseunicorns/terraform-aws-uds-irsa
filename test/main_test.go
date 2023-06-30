@@ -1,9 +1,9 @@
-package test_test
+package e2e_test
 
 import (
 	"context"
 	"os"
-	utils "test_test/test/utils"
+	utils "e2e_test/test/utils"
 	"testing"
 	"time"
 )
