@@ -1,0 +1,10 @@
+name: Scan Terraform
+on:
+  push:
+
+jobs:
+  scan-terraform:
+    uses: defenseunicorns/uds-common-workflows/.github/workflows/terraform-scan.yaml@main
+    with:
+      soft-fail: true
+      github-token: $GITHUB_TOKEN 
