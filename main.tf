@@ -72,27 +72,6 @@ module "irsa_policy" {
   policy      = data.aws_iam_policy_document.irsa_policy.json
 }
 
-module "irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.18.0"
-
-  role_name        = try(coalesce(var.irsa_iam_role_name, format("%s-%s-%s", var.name_prefix, trim(var.kubernetes_service_account, "-*"), "irsa")), null)
-  role_description = "AWS IAM Role for the Kubernetes service account ${var.kubernetes_service_account}."
-
-  oidc_providers = {
-    main = {
-      provider_arn               = var.eks_oidc_provider_arn
-      namespace_service_accounts = [format("%s:%s", var.kubernetes_namespace, var.kubernetes_service_account)]
-    }
-  }
-
-  role_path                     = var.irsa_iam_role_path
-  force_detach_policies         = true
-  role_permissions_boundary_arn = var.irsa_iam_permissions_boundary_arn
-
-  tags = var.tags
-}
-
 resource "aws_iam_role_policy_attachment" "irsa" {
   policy_arn = module.irsa_policy.arn
   role       = module.irsa.iam_role_name
