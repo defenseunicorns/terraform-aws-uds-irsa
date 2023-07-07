@@ -14,27 +14,31 @@ module "irsa" {
   oidc_fully_qualified_subjects = var.oidc_fully_qualified_subjects
 }
 
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
+data "aws_region" "current" {}
+
 resource "random_id" "unique_id" {
   byte_length = 4
 }
-
 resource "aws_iam_policy" "loki_policy" {
   name        = "LokiPolicy-${random_id.unique_id.hex}"
   path        = "/"
   description = "Policy for S3 access."
-
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
-        Resource = ["arn:aws:s3:::dummy-bucket"]
+        Resource = ["arn:${data.aws_partition.current.partition}:s3:::dummy-bucket"]
       },
       {
         Effect   = "Allow"
         Action   = ["s3:*Object"]
-        Resource = ["arn:aws:s3:::dummy-bucket/*"]
+        Resource = ["arn:${data.aws_partition.current.partition}:s3:::dummy-bucket/*"]
       },
       {
         Effect = "Allow"
@@ -42,17 +46,15 @@ resource "aws_iam_policy" "loki_policy" {
           "kms:GenerateDataKey",
           "kms:Decrypt"
         ]
-        Resource = ["arn:aws:kms:us-west-2:123456789012:key/dummy-key"]
+        Resource = ["arn:${data.aws_partition.current.partition}:kms:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:key/dummy-key"]
       }
     ]
   })
 }
-
 resource "aws_iam_policy" "external_dns_policy" {
   name        = "AllowExternalDNSUpdates-${random_id.unique_id.hex}"
   path        = "/"
   description = "Policy for external-dns to create records in route53 hosted zones."
-
   # Terraform expression result to valid JSON syntax.
   policy = jsonencode(
     {
@@ -64,7 +66,7 @@ resource "aws_iam_policy" "external_dns_policy" {
             "route53:ChangeResourceRecordSets"
           ]
           Resource = [
-            "arn:aws:route53:::hostedzone/*"
+            "arn:${data.aws_partition.current.partition}:route53:::hostedzone/*"
           ]
         },
         {
@@ -116,7 +118,7 @@ resource "aws_iam_policy" "velero_policy" {
             "s3:ListMultipartUploadParts"
           ]
           Resource = [
-            "arn:aws:s3:::dummy-bucket/*"
+            "arn:${data.aws_partition.current.partition}:s3:::dummy-bucket/*"
           ]
         },
         {
@@ -125,7 +127,7 @@ resource "aws_iam_policy" "velero_policy" {
             "s3:ListBucket"
           ],
           Resource = [
-            "arn:aws:s3:::dummy-bucket/*"
+            "arn:${data.aws_partition.current.partition}:s3:::dummy-bucket/*"
           ]
         }
       ]
