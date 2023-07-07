@@ -1,16 +1,20 @@
----
 name: Terraform Test
 on:
   pull_request:
+    branches:
+      - "main"
+    paths:
+      - "**.tf"
+      - "**.tfvars"
+      - "test/**"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/terraform-test.y*ml"
+      - "!**.md"
 
 permissions:
   id-token: write
   contents: read
-
-defaults:
-  run:
-    # We need -e -o pipefail for consistency with GitHub Actions' default behavior
-    shell: bash -euo pipefail
 
 jobs:
   terraform-test:
@@ -21,12 +25,18 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_COMMERCIAL_ROLE_TO_ASSUME }}
           role-session-name: ${{ github.event.client_payload.pull_request.head.sha || github.sha }}
-          aws-region: us-east-1
+          aws-region: us-west-2
           # 21600 seconds == 6 hours
           # 1800 seconds == 30 minutes
           role-duration-seconds: 1800
 
-      - name: Run Shared Test workfow
-        uses: defenseunicorns/uds-common-workflows/.github/actions/terraform-test@main
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
         with:
-          test_retry: 1
+          go-version-file: "go.mod"
+
+      - name: Run Tests
+        run: make test
