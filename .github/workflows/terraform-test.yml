@@ -5,6 +5,7 @@ on:
       - "main"
     paths:
       - "**.tf"
+      - "**.tfvars"
       - "test/**"
       - "go.mod"
       - "go.sum"
