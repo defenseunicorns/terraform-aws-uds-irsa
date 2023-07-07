@@ -1,28 +1,29 @@
-variable "bucket_name" {
+variable "provider_url" {
   type        = string
-  description = "Name of the S3 bucket"
+  description = "OIDC provider URL"
+  default     = "oidc.eks.us-west-2.amazonaws.com/id/dummy-oidc-provider"
 }
 
-variable "eks_oidc_provider_arn" {
+variable "name" {
   type        = string
-  description = "ARN of the OIDC provider for the EKS cluster"
+  description = "IAM role name"
+  default     = "irsa_role"
 }
 
-variable "irsa_iam_role_name" {
-  type        = string
-  description = "IAM role name for IRSA"
-  default     = ""
+variable "oidc_fully_qualified_subjects" {
+  type        = list(string)
+  description = "The fully qualified OIDC subjects to be added to the role policy"
+  default     = []
 }
 
-variable "kms_key_arn" {
-  description = "ARN of the KMS key used to encrypt and decrypt objects in S3 bucket"
+variable "role_permissions_boundary_arn" {
+  type        = string
+  description = "Permissions boundary ARN to use for IAM role"
+  default     = null
 }
 
-variable "name_prefix" {
-  description = "Name prefix for all resources that use a randomized suffix"
-  type        = string
-  validation {
-    condition     = length(var.name_prefix) <= 37
-    error_message = "Name Prefix may not be longer than 37 characters."
-  }
+variable "tags" {
+  type        = map(string)
+  description = "Map of tags"
+  default     = {}
 }

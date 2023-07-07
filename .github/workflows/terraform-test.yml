@@ -9,6 +9,7 @@ on:
       - "go.mod"
       - "go.sum"
       - ".github/workflows/terraform-test.y*ml"
+      - "!**.md"
 
 permissions:
   id-token: write
@@ -23,7 +24,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_COMMERCIAL_ROLE_TO_ASSUME }}
           role-session-name: ${{ github.event.client_payload.pull_request.head.sha || github.sha }}
-          aws-region: us-east-1
+          aws-region: us-west-2
           # 21600 seconds == 6 hours
           # 1800 seconds == 30 minutes
           role-duration-seconds: 1800

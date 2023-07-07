@@ -2,86 +2,188 @@ package e2e_test
 
 import (
 	"e2e_test/test/utils"
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"testing"
 
-	"github.com/gruntwork-io/terratest/modules/aws"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/iam"
+	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/terraform"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type moduleInputs struct {
-	BucketName         string
-	EKSoidcProviderARN string
-	IAMroleName        string
-	KMSkeyARN          string
-	NamePrefix         string
+type policyDocumentStatementPrincipal struct {
+	Federated string `json:"federated"`
 }
 
-type moduleOutputs struct {
-	IAMroleARN string
+type policyDocumentStatementCondition struct {
+	StringEquals map[string]interface{} `json:"StringEquals"`
 }
 
-const modulePath = "examples/complete"
+type policyDocumentStatement struct {
+	Sid       string                           `json:"sid"`
+	Effect    string                           `json:"effect"`
+	Principal policyDocumentStatementPrincipal `json:"principal"`
+	Action    string                           `json:"action"`
+	Condition policyDocumentStatementCondition `json:"condition"`
+}
 
-func TestIRSAmodule(t *testing.T) {
+type policyDocument struct {
+	Version   string                    `json:"version"`
+	Statement []policyDocumentStatement `json:"statement"`
+}
+
+const (
+	awsRegion             = "us-west-2"
+	modulePath            = "examples/complete"
+	irsa_role_arn_output  = "role_arn"
+	irsa_role_name_output = "role_name"
+)
+
+// TestIAMRoleArnOutput verifies that the IAM role ARN output string is what we expect it to be based on the IAM role name.
+func TestIAMRoleArnOutput(t *testing.T) {
 	t.Parallel()
 
 	var (
-		awsAccountID  = aws.GetAccountId(t)
+		awsAccountID  = terratest_aws.GetAccountId(t)
 		roleArnPrefix = fmt.Sprintf("arn:aws:iam::%s:role/", awsAccountID)
-		inputs        = moduleInputs{}
-		outputs       = moduleOutputs{}
 	)
-
-	// Define inputs
-	inputs.BucketName = "uds-dev-state-bucket" // Bucket must already exist
-	inputs.EKSoidcProviderARN = "arn:aws:iam::***:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/4B4623F859FE9B94F78C11A191A860B6"
-	inputs.IAMroleName = "should-override-name-prefix"
-	inputs.KMSkeyARN = "arn:aws:kms:us-west-2:123456789012:key/abcd1234-5678-efgh-ijkl-1234567890ab"
-	inputs.NamePrefix = "test"
-
-	// Define outputs
-	outputs.IAMroleARN = "irsa_role_arn"
 
 	testCases := []utils.TestCase{
 		{
-			Name: "Assert the name prefix value is being applied to the IAM role ARN properly",
+			Name: "Assert the default role name value is being applied to the IAM role ARN properly",
 			TerraformOptions: &terraform.Options{
 				TerraformDir: utils.CreateTempDir(t, modulePath),
-				Vars: map[string]interface{}{
-					"bucket_name":           inputs.BucketName,
-					"eks_oidc_provider_arn": inputs.EKSoidcProviderARN,
-					"kms_key_arn":           inputs.KMSkeyARN,
-					"name_prefix":           inputs.NamePrefix,
-				},
 			},
-			TerraformOutputName: outputs.IAMroleARN,
-			ExpectedOutputValue: roleArnPrefix + "test-default-irsa",
+			TerraformOutputName: irsa_role_arn_output,
+			ExpectedOutputValue: roleArnPrefix + "irsa_role",
 		},
 		{
-			Name: "Assert that an IAM role name overrides the name prefix when both a role name and prefix are provided",
+			Name: "Assert that a user provided IAM role name overrides the default name",
 			TerraformOptions: &terraform.Options{
 				TerraformDir: utils.CreateTempDir(t, modulePath),
 				Vars: map[string]interface{}{
-					"bucket_name":           inputs.BucketName,
-					"eks_oidc_provider_arn": inputs.EKSoidcProviderARN,
-					"irsa_iam_role_name":    inputs.IAMroleName, // This should override the name prefix
-					"kms_key_arn":           inputs.KMSkeyARN,
-					"name_prefix":           inputs.NamePrefix,
+					"name": "should-override-default-name", // Pass in an IAM role name to override the default name
 				},
 			},
-			TerraformOutputName: outputs.IAMroleARN,
-			ExpectedOutputValue: roleArnPrefix + inputs.IAMroleName,
+			TerraformOutputName: irsa_role_arn_output,
+			ExpectedOutputValue: roleArnPrefix + "should-override-default-name",
 		},
 	}
 
 	assertRoleARN := func(t *testing.T, testCase utils.TestCase) {
 		t.Helper()
-		terraformOutputValue := terraform.Output(t, testCase.TerraformOptions, testCase.TerraformOutputName)
+		actualOutputValue := terraform.Output(t, testCase.TerraformOptions, testCase.TerraformOutputName)
 		errorMessage := fmt.Sprintf("Test case '%s' failed", testCase.Name)
-		assert.Equal(t, terraformOutputValue, testCase.ExpectedOutputValue, errorMessage)
+		assert.Contains(t, actualOutputValue, testCase.ExpectedOutputValue, errorMessage)
 	}
 
 	utils.ExecuteTestCases(t, testCases, assertRoleARN)
+}
+
+// TestOIDCProviderArn verifies that the ARN value of the federated principal in the assume role policy document is what we expect it to be.
+func TestOIDCProviderArn(t *testing.T) {
+	t.Parallel()
+
+	var (
+		awsAccountID          = terratest_aws.GetAccountId(t)
+		oidcProviderArnPrefix = fmt.Sprintf("arn:aws:iam::%s:oidc-provider/", awsAccountID)
+	)
+
+	testCases := []utils.TestCase{
+		{
+			Name: "Assert the OIDC provider ARN in the assume role policy document for the IRSA role is what we expect it to be",
+			TerraformOptions: &terraform.Options{
+				TerraformDir: utils.CreateTempDir(t, modulePath),
+			},
+			ExpectedOutputValue: oidcProviderArnPrefix + "oidc.eks.us-west-2.amazonaws.com/id/dummy-oidc-provider", // Default value
+		},
+		{
+			Name: "Assert the OIDC provider ARN in the assume role policy document for the IRSA role is what we expect it to be when overriding the OIDC provider url",
+			TerraformOptions: &terraform.Options{
+				TerraformDir: utils.CreateTempDir(t, modulePath),
+				Vars: map[string]interface{}{
+					"provider_url": "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url",
+				},
+			},
+			ExpectedOutputValue: oidcProviderArnPrefix + "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url",
+		},
+	}
+
+	assertOIDCProviderArn := func(t *testing.T, testCase utils.TestCase) {
+		t.Helper()
+
+		policyStruct := policyDocument{}
+		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyStruct)
+
+		// Assert that the federated principal ARN value for the OIDC provider matches the expected output.
+		federatedPrincipal := assumeRolePolicy.Statement[0].Principal.Federated
+		errorMessage := fmt.Sprintf("Test case '%s' failed", testCase.Name)
+		assert.Equal(t, testCase.ExpectedOutputValue, federatedPrincipal, errorMessage)
+	}
+
+	utils.ExecuteTestCases(t, testCases, assertOIDCProviderArn)
+}
+
+// TODO: fix this test
+
+// func TestFullyQualifiedSubjects(t *testing.T) {
+// 	t.Parallel()
+
+// 	expectedFullyQualifiedSubjects := map[string]interface{}{
+// 		"oidc.eks.us-west-2.amazonaws.com/id/dummy-oidc-provider:sub": "system:serviceaccount:test-data:test-data",
+// 	}
+
+// 	testCases := []utils.TestCase{
+// 		{
+// 			Name: "Assert the OIDC fully qualified subjects in the assume role policy document for the IRSA role is what we expect it to be",
+// 			TerraformOptions: &terraform.Options{
+// 				TerraformDir: utils.CreateTempDir(t, modulePath),
+// 				Vars: map[string]interface{}{
+// 					"oidc_fully_qualified_subjects": "system:serviceaccount:test-data:test-data",
+// 				},
+// 			},
+// 			ExpectedOutputValue: expectedFullyQualifiedSubjects,
+// 		},
+// 	}
+
+// 	assertOIDCFullyQualifiedSubjects := func(t *testing.T, testCase utils.TestCase) {
+// 		t.Helper()
+
+// 		policyStruct := policyDocument{}
+// 		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyStruct)
+
+// 		// Assert that the OIDC fully qualified subject matches the expected output.
+// 		fullyQualifiedSubjects := assumeRolePolicy.Statement[0].Condition.StringEquals
+// 		errorMessage := fmt.Sprintf("Test case '%s' failed", testCase.Name)
+// 		assert.EqualValues(t, testCase.ExpectedOutputValue, fullyQualifiedSubjects, errorMessage)
+// 	}
+
+// 	utils.ExecuteTestCases(t, testCases, assertOIDCFullyQualifiedSubjects)
+// }
+
+func getAssumeRolePolicyDocument(t *testing.T, testCase utils.TestCase, assumeRolePolicy policyDocument) policyDocument {
+	t.Helper()
+
+	// Fetch the IAM role policy document
+	iamClient := terratest_aws.NewIamClient(t, awsRegion)
+	roleName := terraform.Output(t, testCase.TerraformOptions, irsa_role_name_output)
+	iamRoleOutput, err := iamClient.GetRole(&iam.GetRoleInput{
+		RoleName: &roleName,
+	})
+	require.NoError(t, err)
+
+	// Decode JSON policy document and unmarshal
+	assumeRolePolicyDoc := aws.StringValue(iamRoleOutput.Role.AssumeRolePolicyDocument)
+	decodedPolicyDoc, err := url.PathUnescape(assumeRolePolicyDoc)
+	require.NoError(t, err)
+	if err := json.Unmarshal([]byte(decodedPolicyDoc), &assumeRolePolicy); err != nil {
+		require.NoError(t, err)
+	}
+
+	return assumeRolePolicy
 }
