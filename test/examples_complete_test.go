@@ -17,7 +17,7 @@ import (
 )
 
 type policyDocumentStatementPrincipal struct {
-	Federated string `json:"federated"`
+	Federated string `json:"Federated"`
 }
 
 type policyDocumentStatementCondition struct {
@@ -25,16 +25,16 @@ type policyDocumentStatementCondition struct {
 }
 
 type policyDocumentStatement struct {
-	Sid       string                           `json:"sid"`
-	Effect    string                           `json:"effect"`
-	Principal policyDocumentStatementPrincipal `json:"principal"`
-	Action    string                           `json:"action"`
-	Condition policyDocumentStatementCondition `json:"condition"`
+	Sid       string                           `json:"Sid"`
+	Effect    string                           `json:"Effect"`
+	Principal policyDocumentStatementPrincipal `json:"Principal"`
+	Action    string                           `json:"Action"`
+	Condition policyDocumentStatementCondition `json:"Condition"`
 }
 
 type policyDocument struct {
-	Version   string                    `json:"version"`
-	Statement []policyDocumentStatement `json:"statement"`
+	Version   string                    `json:"Version"`
+	Statement []policyDocumentStatement `json:"Statement"`
 }
 
 const (
@@ -85,7 +85,7 @@ func TestIAMRoleArnOutput(t *testing.T) {
 	utils.ExecuteTestCases(t, testCases, assertRoleARN)
 }
 
-// TestOIDCProviderArn verifies that the ARN value of the federated principal in the assume role policy document is what we expect it to be.
+// TestOIDCProviderArn verifies that the ARN value of the federated principal in the trusted entitites policy is what we expect it to be.
 func TestOIDCProviderArn(t *testing.T) {
 	t.Parallel()
 
@@ -117,8 +117,7 @@ func TestOIDCProviderArn(t *testing.T) {
 	assertOIDCProviderArn := func(t *testing.T, testCase utils.TestCase) {
 		t.Helper()
 
-		policyStruct := policyDocument{}
-		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyStruct)
+		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyDocument{})
 
 		// Assert that the federated principal ARN value for the OIDC provider matches the expected output.
 		federatedPrincipal := assumeRolePolicy.Statement[0].Principal.Federated
@@ -129,43 +128,40 @@ func TestOIDCProviderArn(t *testing.T) {
 	utils.ExecuteTestCases(t, testCases, assertOIDCProviderArn)
 }
 
-// TODO: fix this test
+// TestFullyQualifiedSubjects verifies that the OIDC fully qualified subjects var value passed to the Condition.StringEquals field in the trusted entities policy is what we expect it to be.
+func TestFullyQualifiedSubjects(t *testing.T) {
+	t.Parallel()
 
-// func TestFullyQualifiedSubjects(t *testing.T) {
-// 	t.Parallel()
+	expectedFullyQualifiedSubjects := map[string]interface{}{
+		"oidc.eks.us-west-2.amazonaws.com/id/dummy-oidc-provider:sub": "system:serviceaccount:test-data:test-data",
+	}
 
-// 	expectedFullyQualifiedSubjects := map[string]interface{}{
-// 		"oidc.eks.us-west-2.amazonaws.com/id/dummy-oidc-provider:sub": "system:serviceaccount:test-data:test-data",
-// 	}
+	testCases := []utils.TestCase{
+		{
+			Name: "Assert the OIDC fully qualified subjects in the assume role policy document for the IRSA role is what we expect it to be",
+			TerraformOptions: &terraform.Options{
+				TerraformDir: utils.CreateTempDir(t, modulePath),
+				VarFiles:     []string{"example.tfvars"},
+			},
+			ExpectedOutputValue: expectedFullyQualifiedSubjects,
+		},
+	}
 
-// 	testCases := []utils.TestCase{
-// 		{
-// 			Name: "Assert the OIDC fully qualified subjects in the assume role policy document for the IRSA role is what we expect it to be",
-// 			TerraformOptions: &terraform.Options{
-// 				TerraformDir: utils.CreateTempDir(t, modulePath),
-// 				Vars: map[string]interface{}{
-// 					"oidc_fully_qualified_subjects": "system:serviceaccount:test-data:test-data",
-// 				},
-// 			},
-// 			ExpectedOutputValue: expectedFullyQualifiedSubjects,
-// 		},
-// 	}
+	assertOIDCFullyQualifiedSubjects := func(t *testing.T, testCase utils.TestCase) {
+		t.Helper()
 
-// 	assertOIDCFullyQualifiedSubjects := func(t *testing.T, testCase utils.TestCase) {
-// 		t.Helper()
+		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyDocument{})
 
-// 		policyStruct := policyDocument{}
-// 		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyStruct)
+		// Assert that the OIDC fully qualified subject matches the expected output.
+		fullyQualifiedSubjects := assumeRolePolicy.Statement[0].Condition.StringEquals
+		errorMessage := fmt.Sprintf("Test case '%s' failed", testCase.Name)
+		assert.EqualValues(t, testCase.ExpectedOutputValue, fullyQualifiedSubjects, errorMessage)
+	}
 
-// 		// Assert that the OIDC fully qualified subject matches the expected output.
-// 		fullyQualifiedSubjects := assumeRolePolicy.Statement[0].Condition.StringEquals
-// 		errorMessage := fmt.Sprintf("Test case '%s' failed", testCase.Name)
-// 		assert.EqualValues(t, testCase.ExpectedOutputValue, fullyQualifiedSubjects, errorMessage)
-// 	}
+	utils.ExecuteTestCases(t, testCases, assertOIDCFullyQualifiedSubjects)
+}
 
-// 	utils.ExecuteTestCases(t, testCases, assertOIDCFullyQualifiedSubjects)
-// }
-
+// getAssumeRolePolicyDocument decodes and unmarshals the trust relationship policy for the created IRSA role.
 func getAssumeRolePolicyDocument(t *testing.T, testCase utils.TestCase, assumeRolePolicy policyDocument) policyDocument {
 	t.Helper()
 

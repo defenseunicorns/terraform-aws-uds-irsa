@@ -3,7 +3,8 @@ resource "random_id" "unique_id" {
 }
 
 module "irsa" {
-  source                        = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
+  source = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
+  # renovate: datasource=github-tags depName=terraform-aws-modules/terraform-aws-iam
   version                       = "5.27.0"
   create_role                   = true
   role_name                     = "${var.name}-${random_id.unique_id.hex}"
