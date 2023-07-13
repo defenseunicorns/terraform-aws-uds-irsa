@@ -1,5 +1,6 @@
 <!-- END_TF_DOCS -->locals {
   irsa_role_name = try(coalesce(var.irsa_iam_role_name, format("%s-%s-%s", var.name, trim(var.kubernetes_service_account, "-*"), "irsa")), null)
+  kubernetes_namespace = var.kubernetes_namespace #placeholder
   #TODO: grab Lucas's changes for merging `var.kubernetes_service_account` and `var.kubernetes_namespace` into a single list with `var.oidc_fully_qualified_subjects`
 }
 

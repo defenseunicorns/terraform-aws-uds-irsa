@@ -1,4 +1,4 @@
-}variable "oidc_fully_qualified_subjects" {
+variable "oidc_fully_qualified_subjects" {
   type        = list(string)
   description = "The fully qualified OIDC subjects to be added to the role policy"
   default     = []
