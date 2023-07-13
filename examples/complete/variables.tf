@@ -17,16 +17,15 @@ variable "oidc_fully_qualified_subjects" {
 }
 
 variable "kubernetes_namespace" {
-  type = string
+  type    = string
   default = "some-namespace"
 }
 
 variable "kubernetes_service_account" {
-  type = string
+  type    = string
   default = "service-account"
 }
 
 variable "irsa_iam_role_name" {
-  type = string
+  type    = string
   default = ""
-}
