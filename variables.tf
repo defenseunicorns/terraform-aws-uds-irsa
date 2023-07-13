@@ -1,4 +1,4 @@
-variable "oidc_fully_qualified_subjects" {
+}variable "oidc_fully_qualified_subjects" {
   type        = list(string)
   description = "The fully qualified OIDC subjects to be added to the role policy"
   default     = []
@@ -28,7 +28,7 @@ variable "irsa_iam_role_name" {
 
 variable "force_detach_policies" {
   default = true
-  type = bool
+  type    = bool
 }
 
 variable "role_permissions_boundary_arn" {
@@ -39,12 +39,12 @@ variable "role_permissions_boundary_arn" {
 
 variable "kubernetes_service_account" {
   description = "Name of the service account to bind to. Used to generate fully qualified subject for service account."
-  type = string
+  type        = string
 }
 
 variable "kubernetes_namespace" {
   description = "Name of the namespace that the service account exists in. Used to generate fully qualified subject for the service account."
-  type = string
+  type        = string
 }
 
 variable "tags" {
