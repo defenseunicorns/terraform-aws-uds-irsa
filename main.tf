@@ -18,3 +18,4 @@ module "irsa" {
   tags                          = var.tags
   force_detach_policies         = var.force_detach_policies
   role_description              = "AWS IAM Role for the Kubernetes service account ${var.kubernetes_service_account}."
+}
