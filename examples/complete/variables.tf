@@ -29,3 +29,5 @@ variable "kubernetes_service_account" {
 variable "irsa_iam_role_name" {
   type    = string
   default = ""
+}
+

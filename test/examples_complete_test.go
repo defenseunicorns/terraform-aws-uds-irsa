@@ -76,8 +76,8 @@ func TestIAMRoleArnOutput(t *testing.T) {
 			TerraformOptions: &terraform.Options{
 				TerraformDir: utils.CreateTempDir(t, modulePath),
 				Vars: map[string]interface{}{
-					"kubernetes_service_account": "service-account", // Pass in tf var kubernetes_service_account
-					"name": "some-cluster-name", // Pass in tf var name
+					"kubernetes_service_account": service_account, // Pass in tf var kubernetes_service_account
+					"name": name, // Pass in tf var name
 				},
 			},
 			TerraformOutputName: irsa_role_arn_output,
