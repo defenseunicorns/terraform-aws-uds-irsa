@@ -1,3 +1,12 @@
+# IAM Role for Service Accounts (IRSA) Module
+
+This repository contains Terraform configuration files that create an IAM role that can be used by applications running in a Kubernetes cluster to have the necessary permissions to interact with AWS services.
+
+## Examples
+
+To view examples for how you can leverage this IRSA Module, please see the [examples](https://github.com/defenseunicorns/terraform-aws-uds-irsa/tree/main/examples) directory.
+
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 | Name | Version |
