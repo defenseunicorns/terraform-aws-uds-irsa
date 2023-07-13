@@ -41,3 +41,4 @@ No resources.
 |------|-------------|
 | <a name="output_role_arn"></a> [role\_arn](#output\_role\_arn) | ARN of the IAM role |
 | <a name="output_role_name"></a> [role\_name](#output\_role\_name) | Name of the IAM role |
+<!-- END_TF_DOCS -->
