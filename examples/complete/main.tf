@@ -1,7 +1,10 @@
 module "irsa" {
   source = "../.."
 
-  name = var.name
+  name                       = var.name
+  kubernetes_namespace       = var.kubernetes_namespace
+  kubernetes_service_account = "${var.kubernetes_service_account}-${random_id.unique_id.hex}" #added in random hex to allow for parallel applies (otherwise terraform would error as role names need to be unique)
+  irsa_iam_role_name         = var.irsa_iam_role_name
 
   policy_arns = [
     aws_iam_policy.external_dns_policy.arn,
@@ -23,6 +26,7 @@ data "aws_region" "current" {}
 resource "random_id" "unique_id" {
   byte_length = 4
 }
+
 resource "aws_iam_policy" "loki_policy" {
   name        = "LokiPolicy-${random_id.unique_id.hex}"
   path        = "/"

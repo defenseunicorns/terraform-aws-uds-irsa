@@ -6,12 +6,24 @@ variable "provider_url" {
 
 variable "name" {
   type        = string
-  description = "IAM role name"
-  default     = "irsa_role"
+  description = "Cluster name, used in the name of the iam role that is created"
+  default     = "cluster-name"
 }
 
 variable "oidc_fully_qualified_subjects" {
   type        = list(string)
   description = "The fully qualified OIDC subjects to be added to the role policy"
   default     = []
+}
+
+variable "kubernetes_namespace" {
+  default = "some-namespace"
+}
+
+variable "kubernetes_service_account" {
+  default = "service-account"
+}
+
+variable "irsa_iam_role_name" {
+  default = ""
 }

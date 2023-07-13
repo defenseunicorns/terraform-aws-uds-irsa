@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"net/url"
 	"testing"
-
+    "strings"
+	"regexp"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
 	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
@@ -42,7 +43,22 @@ const (
 	modulePath            = "examples/complete"
 	irsa_role_arn_output  = "role_arn"
 	irsa_role_name_output = "role_name"
+	name                  = "some-cluster-name"
+	service_account       = "service-account"
 )
+
+// Function for generating the formatted role name
+func formatName(name string, serviceAccount string) string {
+	trimmedServiceAccount := strings.TrimLeft(serviceAccount, "-*")
+	result := fmt.Sprintf("%s-%s-%s", name, trimmedServiceAccount, "irsa")
+	return result
+}
+// Function for removing randomly generated hexadecimal characters from the role arn (required for testing in paralell)
+func stripHexadecimal(input string) string {
+	regex := regexp.MustCompile(`-[0-9a-fA-F]+-irsa$`)
+	strippedString := regex.ReplaceAllString(input, "-irsa")
+	return strippedString
+}
 
 // TestIAMRoleArnOutput verifies that the IAM role ARN output string is what we expect it to be based on the IAM role name.
 func TestIAMRoleArnOutput(t *testing.T) {
@@ -51,6 +67,7 @@ func TestIAMRoleArnOutput(t *testing.T) {
 	var (
 		awsAccountID  = terratest_aws.GetAccountId(t)
 		roleArnPrefix = fmt.Sprintf("arn:aws:iam::%s:role/", awsAccountID)
+		formattedName =  formatName(name, service_account)
 	)
 
 	testCases := []utils.TestCase{
@@ -58,28 +75,32 @@ func TestIAMRoleArnOutput(t *testing.T) {
 			Name: "Assert the default role name value is being applied to the IAM role ARN properly",
 			TerraformOptions: &terraform.Options{
 				TerraformDir: utils.CreateTempDir(t, modulePath),
+				Vars: map[string]interface{}{
+					"kubernetes_service_account": "service-account", // Pass in tf var kubernetes_service_account
+					"name": "some-cluster-name", // Pass in tf var name
+				},
 			},
 			TerraformOutputName: irsa_role_arn_output,
-			ExpectedOutputValue: roleArnPrefix + "irsa_role",
+			ExpectedOutputValue: roleArnPrefix + formattedName,
 		},
 		{
 			Name: "Assert that a user provided IAM role name overrides the default name",
 			TerraformOptions: &terraform.Options{
 				TerraformDir: utils.CreateTempDir(t, modulePath),
 				Vars: map[string]interface{}{
-					"name": "should-override-default-name", // Pass in an IAM role name to override the default name
+					"irsa_iam_role_name": "should-override-default-name", // Pass in an IAM role name to override the default name
 				},
 			},
 			TerraformOutputName: irsa_role_arn_output,
 			ExpectedOutputValue: roleArnPrefix + "should-override-default-name",
 		},
 	}
-
+	
 	assertRoleARN := func(t *testing.T, testCase utils.TestCase) {
 		t.Helper()
 		actualOutputValue := terraform.Output(t, testCase.TerraformOptions, testCase.TerraformOutputName)
 		errorMessage := fmt.Sprintf("Test case '%s' failed", testCase.Name)
-		assert.Contains(t, actualOutputValue, testCase.ExpectedOutputValue, errorMessage)
+		assert.Contains(t, stripHexadecimal(actualOutputValue), testCase.ExpectedOutputValue, errorMessage)
 	}
 
 	utils.ExecuteTestCases(t, testCases, assertRoleARN)
