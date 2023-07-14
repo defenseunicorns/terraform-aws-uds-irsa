@@ -44,6 +44,7 @@ const (
 	irsa_role_arn_output  = "role_arn"
 	irsa_role_name_output = "role_name"
 	name                  = "some-cluster-name"
+	namespace             = "some-namespace"
 	service_account       = "service-account"
 )
 
@@ -55,9 +56,18 @@ func formatName(name string, serviceAccount string) string {
 }
 // Function for removing randomly generated hexadecimal characters from the role arn (required for testing in paralell)
 func stripHexadecimal(input string) string {
-	regex := regexp.MustCompile(`-[0-9a-fA-F]+-irsa$`)
-	strippedString := regex.ReplaceAllString(input, "-irsa")
+	regex_hex := regexp.MustCompile(`-[0-9a-fA-F]+-irsa$`)
+	strippedString := regex_hex.ReplaceAllString(input, "-irsa")
 	return strippedString
+}
+
+// Remove randmomly generated guid at the end of k8s service account name
+func stripServiceAccountGuid(input string) string {
+	pattern := `(.*)-[^-]+$`
+	regex_guid := regexp.MustCompile(pattern)
+	match := regex_guid.FindStringSubmatch(input)
+	trimmedStr := match[1]
+	return trimmedStr
 }
 
 // TestIAMRoleArnOutput verifies that the IAM role ARN output string is what we expect it to be based on the IAM role name.
@@ -121,7 +131,7 @@ func TestOIDCProviderArn(t *testing.T) {
 			TerraformOptions: &terraform.Options{
 				TerraformDir: utils.CreateTempDir(t, modulePath),
 			},
-			ExpectedOutputValue: oidcProviderArnPrefix + "oidc.eks.us-west-2.amazonaws.com/id/dummy-oidc-provider", // Default value
+			ExpectedOutputValue: oidcProviderArnPrefix + "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url", // Default value
 		},
 		{
 			Name: "Assert the OIDC provider ARN in the assume role policy document for the IRSA role is what we expect it to be when overriding the OIDC provider url",
@@ -153,8 +163,14 @@ func TestOIDCProviderArn(t *testing.T) {
 func TestFullyQualifiedSubjects(t *testing.T) {
 	t.Parallel()
 
+	var (
+		keyAud = "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url:aud"
+	    keySub = "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url:sub"
+	)
 	expectedFullyQualifiedSubjects := map[string]interface{}{
-		"oidc.eks.us-west-2.amazonaws.com/id/dummy-oidc-provider:sub": "system:serviceaccount:test-data:test-data",
+		keyAud : "sts.amazonaws.com",
+		keySub : "system:serviceaccount:" + namespace + ":" + service_account,
+		// "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url:sub": "system:serviceaccount:test-data:test-data",
 	}
 
 	testCases := []utils.TestCase{
@@ -170,13 +186,21 @@ func TestFullyQualifiedSubjects(t *testing.T) {
 
 	assertOIDCFullyQualifiedSubjects := func(t *testing.T, testCase utils.TestCase) {
 		t.Helper()
-
+        
 		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyDocument{})
-
 		// Assert that the OIDC fully qualified subject matches the expected output.
 		fullyQualifiedSubjects := assumeRolePolicy.Statement[0].Condition.StringEquals
 		errorMessage := fmt.Sprintf("Test case '%s' failed", testCase.Name)
-		assert.EqualValues(t, testCase.ExpectedOutputValue, fullyQualifiedSubjects, errorMessage)
+
+		// Loop over the expected results to ensure all cases are validated
+		for key, value := range expectedFullyQualifiedSubjects {
+		  returnedValue := fullyQualifiedSubjects[key]
+		  // Strip the random guids from the service account name (if the returned value is a service account)
+		  if strings.Contains(fmt.Sprint(returnedValue), "system:serviceaccount") {
+			returnedValue = stripServiceAccountGuid(fmt.Sprint(returnedValue))
+		  }
+		  assert.EqualValues(t, value, returnedValue, errorMessage)
+		}
 	}
 
 	utils.ExecuteTestCases(t, testCases, assertOIDCFullyQualifiedSubjects)

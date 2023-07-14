@@ -1,17 +1,7 @@
-variable "oidc_fully_qualified_subjects" {
-  type        = list(string)
-  description = "The fully qualified OIDC subjects to be added to the role policy"
-  default     = []
-}
-
-variable "policy_arns" {
-  type        = list(string)
-  description = "List of IAM policy ARNs to attach to the IAM role"
-}
-
-variable "provider_url" {
-  type        = string
-  description = "OIDC provider URL"
+variable "role_policy_arns" {
+  description = "ARNs of any policies to attach to the IAM role"
+  type        = map(string)
+  default     = {}
 }
 
 variable "name" {
@@ -29,6 +19,11 @@ variable "irsa_iam_role_name" {
 variable "force_detach_policies" {
   default = true
   type    = bool
+}
+
+variable "oidc_provider_arn" {
+  description = "OIDC Provider ARN e.g., arn:aws:iam::<ACCOUNT-ID>:oidc-provider/<OIDC-PROVIDER>"
+  type        = string
 }
 
 variable "role_permissions_boundary_arn" {
