@@ -54,7 +54,7 @@ func formatName(name string, serviceAccount string) string {
 	result := fmt.Sprintf("%s-%s-%s", name, trimmedServiceAccount, "irsa")
 	return result
 }
-// Function for removing randomly generated hexadecimal characters from the role arn (required for testing in paralell)
+// Function for removing randomly generated hexadecimal characters from the role arn (required for testing in parallel)
 func stripHexadecimal(input string) string {
 	regex_hex := regexp.MustCompile(`-[0-9a-fA-F]+-irsa$`)
 	strippedString := regex_hex.ReplaceAllString(input, "-irsa")
@@ -131,14 +131,14 @@ func TestOIDCProviderArn(t *testing.T) {
 			TerraformOptions: &terraform.Options{
 				TerraformDir: utils.CreateTempDir(t, modulePath),
 			},
-			ExpectedOutputValue: oidcProviderArnPrefix + "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url", // Default value
+			ExpectedOutputValue: oidcProviderArnPrefix,
 		},
 		{
 			Name: "Assert the OIDC provider ARN in the assume role policy document for the IRSA role is what we expect it to be when overriding the OIDC provider url",
 			TerraformOptions: &terraform.Options{
 				TerraformDir: utils.CreateTempDir(t, modulePath),
 				Vars: map[string]interface{}{
-					"provider_url": "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url",
+					"oidc_provider_arn": "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url",
 				},
 			},
 			ExpectedOutputValue: oidcProviderArnPrefix + "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url",
@@ -164,8 +164,8 @@ func TestFullyQualifiedSubjects(t *testing.T) {
 	t.Parallel()
 
 	var (
-		keyAud = "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url:aud"
-	    keySub = "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url:sub"
+		keyAud = ":aud"
+	    keySub = ":sub"
 	)
 	expectedFullyQualifiedSubjects := map[string]interface{}{
 		keyAud : "sts.amazonaws.com",

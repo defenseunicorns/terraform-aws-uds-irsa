@@ -19,3 +19,7 @@ variable "irsa_iam_role_name" {
   default = ""
 }
 
+variable "oidc_provider_arn" {
+  description = "ARN of the OIDC provider"
+  default = ""
+}
