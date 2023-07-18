@@ -5,13 +5,12 @@ module "irsa" {
   kubernetes_namespace       = var.kubernetes_namespace
   kubernetes_service_account = "${var.kubernetes_service_account}-${random_id.unique_id.hex}" #added in random hex to allow for parallel applies (otherwise terraform would error as role names need to be unique)
   oidc_provider_arn          = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${var.oidc_provider_arn}"
-  #oidc_provider_arn          = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url"
   irsa_iam_role_name = var.irsa_iam_role_name
 
   role_policy_arns = tomap({
     "external-dns" = aws_iam_policy.external_dns_policy.arn,
     "loki"         = aws_iam_policy.loki_policy.arn,
-    "valero"       = aws_iam_policy.velero_policy.arn
+    "velero"       = aws_iam_policy.velero_policy.arn
   })
 
 }
@@ -37,12 +36,10 @@ resource "aws_iam_policy" "loki_policy" {
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
         Resource = ["arn:aws:s3:::*"]
-        #Resource = ["arn:${data.aws_partition.current.partition}:s3:::dummy-bucket"]
       },
       {
         Effect = "Allow"
         Action = ["s3:*Object"]
-        #Resource = ["arn:${data.aws_partition.current.partition}:s3:::dummy-bucket/*"]
         Resource = ["arn:aws:s3:::*"]
       },
       {
@@ -124,7 +121,6 @@ resource "aws_iam_policy" "velero_policy" {
           ]
           Resource = [
             "arn:aws:s3:::*"
-            #"arn:${data.aws_partition.current.partition}:s3:::dummy-bucket/*"
           ]
         },
         {
@@ -134,7 +130,6 @@ resource "aws_iam_policy" "velero_policy" {
           ],
           Resource = [
             "arn:aws:s3:::*"
-            #"arn:${data.aws_partition.current.partition}:s3:::dummy-bucket/*"
           ]
         }
       ]

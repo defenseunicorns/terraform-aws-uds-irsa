@@ -4,7 +4,9 @@ import (
 	"os"
 	"sync"
 	"testing"
-
+    "strings"
+	"regexp"
+	"fmt"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	testStructure "github.com/gruntwork-io/terratest/modules/test-structure"
 )
@@ -45,4 +47,26 @@ func ExecuteTestCases(t *testing.T, testCases []TestCase, testFunction func(*tes
 // This allows multiple tests to in parallel against the same set of Terraform files.
 func CreateTempDir(t *testing.T, modulePath string) (testDir string) {
 	return testStructure.CopyTerraformFolderToTemp(t, "..", modulePath)
+}
+
+// Function for generating the formatted role name
+func FormatName(name string, serviceAccount string) string {
+	trimmedServiceAccount := strings.TrimLeft(serviceAccount, "-*")
+	result := fmt.Sprintf("%s-%s-%s", name, trimmedServiceAccount, "irsa")
+	return result
+}
+// Function for removing randomly generated hexadecimal characters from the role arn (required for testing in parallel)
+func StripHexadecimal(input string) string {
+	regex_hex := regexp.MustCompile(`-[0-9a-fA-F]+-irsa$`)
+	strippedString := regex_hex.ReplaceAllString(input, "-irsa")
+	return strippedString
+}
+
+// Remove randmomly generated guid at the end of k8s service account name
+func StripServiceAccountGuid(input string) string {
+	pattern := `(.*)-[^-]+$`
+	regex_guid := regexp.MustCompile(pattern)
+	match := regex_guid.FindStringSubmatch(input)
+	trimmedStr := match[1]
+	return trimmedStr
 }

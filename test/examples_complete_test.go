@@ -5,9 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 	"testing"
-    "strings"
-	"regexp"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
 	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
@@ -48,27 +47,7 @@ const (
 	service_account       = "service-account"
 )
 
-// Function for generating the formatted role name
-func formatName(name string, serviceAccount string) string {
-	trimmedServiceAccount := strings.TrimLeft(serviceAccount, "-*")
-	result := fmt.Sprintf("%s-%s-%s", name, trimmedServiceAccount, "irsa")
-	return result
-}
-// Function for removing randomly generated hexadecimal characters from the role arn (required for testing in parallel)
-func stripHexadecimal(input string) string {
-	regex_hex := regexp.MustCompile(`-[0-9a-fA-F]+-irsa$`)
-	strippedString := regex_hex.ReplaceAllString(input, "-irsa")
-	return strippedString
-}
 
-// Remove randmomly generated guid at the end of k8s service account name
-func stripServiceAccountGuid(input string) string {
-	pattern := `(.*)-[^-]+$`
-	regex_guid := regexp.MustCompile(pattern)
-	match := regex_guid.FindStringSubmatch(input)
-	trimmedStr := match[1]
-	return trimmedStr
-}
 
 // TestIAMRoleArnOutput verifies that the IAM role ARN output string is what we expect it to be based on the IAM role name.
 func TestIAMRoleArnOutput(t *testing.T) {
@@ -77,7 +56,7 @@ func TestIAMRoleArnOutput(t *testing.T) {
 	var (
 		awsAccountID  = terratest_aws.GetAccountId(t)
 		roleArnPrefix = fmt.Sprintf("arn:aws:iam::%s:role/", awsAccountID)
-		formattedName =  formatName(name, service_account)
+		formattedName =  utils.FormatName(name, service_account)
 	)
 
 	testCases := []utils.TestCase{
@@ -110,7 +89,7 @@ func TestIAMRoleArnOutput(t *testing.T) {
 		t.Helper()
 		actualOutputValue := terraform.Output(t, testCase.TerraformOptions, testCase.TerraformOutputName)
 		errorMessage := fmt.Sprintf("Test case '%s' failed", testCase.Name)
-		assert.Contains(t, stripHexadecimal(actualOutputValue), testCase.ExpectedOutputValue, errorMessage)
+		assert.Contains(t, utils.StripHexadecimal(actualOutputValue), testCase.ExpectedOutputValue, errorMessage)
 	}
 
 	utils.ExecuteTestCases(t, testCases, assertRoleARN)
@@ -170,7 +149,6 @@ func TestFullyQualifiedSubjects(t *testing.T) {
 	expectedFullyQualifiedSubjects := map[string]interface{}{
 		keyAud : "sts.amazonaws.com",
 		keySub : "system:serviceaccount:" + namespace + ":" + service_account,
-		// "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url:sub": "system:serviceaccount:test-data:test-data",
 	}
 
 	testCases := []utils.TestCase{
@@ -197,7 +175,7 @@ func TestFullyQualifiedSubjects(t *testing.T) {
 		  returnedValue := fullyQualifiedSubjects[key]
 		  // Strip the random guids from the service account name (if the returned value is a service account)
 		  if strings.Contains(fmt.Sprint(returnedValue), "system:serviceaccount") {
-			returnedValue = stripServiceAccountGuid(fmt.Sprint(returnedValue))
+			returnedValue = utils.StripServiceAccountGuid(fmt.Sprint(returnedValue))
 		  }
 		  assert.EqualValues(t, value, returnedValue, errorMessage)
 		}
