@@ -1,17 +1,18 @@
 module "irsa" {
   source = "../.."
 
-  name = var.name
+  name                       = var.name
+  kubernetes_namespace       = var.kubernetes_namespace
+  kubernetes_service_account = "${var.kubernetes_service_account}-${random_id.unique_id.hex}" #added in random hex to allow for parallel applies (otherwise terraform would error as role names need to be unique)
+  oidc_provider_arn          = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${var.oidc_provider_arn}"
+  irsa_iam_role_name         = var.irsa_iam_role_name
 
-  policy_arns = [
-    aws_iam_policy.external_dns_policy.arn,
-    aws_iam_policy.loki_policy.arn,
-    aws_iam_policy.velero_policy.arn
-  ]
+  role_policy_arns = tomap({
+    "external-dns" = aws_iam_policy.external_dns_policy.arn,
+    "loki"         = aws_iam_policy.loki_policy.arn,
+    "velero"       = aws_iam_policy.velero_policy.arn
+  })
 
-  provider_url = var.provider_url
-
-  oidc_fully_qualified_subjects = var.oidc_fully_qualified_subjects
 }
 
 data "aws_caller_identity" "current" {}
@@ -23,6 +24,7 @@ data "aws_region" "current" {}
 resource "random_id" "unique_id" {
   byte_length = 4
 }
+
 resource "aws_iam_policy" "loki_policy" {
   name        = "LokiPolicy-${random_id.unique_id.hex}"
   path        = "/"
@@ -33,12 +35,12 @@ resource "aws_iam_policy" "loki_policy" {
       {
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
-        Resource = ["arn:${data.aws_partition.current.partition}:s3:::dummy-bucket"]
+        Resource = ["arn:aws:s3:::*"]
       },
       {
         Effect   = "Allow"
         Action   = ["s3:*Object"]
-        Resource = ["arn:${data.aws_partition.current.partition}:s3:::dummy-bucket/*"]
+        Resource = ["arn:aws:s3:::*"]
       },
       {
         Effect = "Allow"
@@ -46,7 +48,7 @@ resource "aws_iam_policy" "loki_policy" {
           "kms:GenerateDataKey",
           "kms:Decrypt"
         ]
-        Resource = ["arn:${data.aws_partition.current.partition}:kms:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:key/dummy-key"]
+        Resource = ["arn:${data.aws_partition.current.partition}:kms:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:key/*"]
       }
     ]
   })
@@ -118,7 +120,7 @@ resource "aws_iam_policy" "velero_policy" {
             "s3:ListMultipartUploadParts"
           ]
           Resource = [
-            "arn:${data.aws_partition.current.partition}:s3:::dummy-bucket/*"
+            "arn:aws:s3:::*"
           ]
         },
         {
@@ -127,7 +129,7 @@ resource "aws_iam_policy" "velero_policy" {
             "s3:ListBucket"
           ],
           Resource = [
-            "arn:${data.aws_partition.current.partition}:s3:::dummy-bucket/*"
+            "arn:aws:s3:::*"
           ]
         }
       ]

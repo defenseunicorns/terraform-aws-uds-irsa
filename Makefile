@@ -4,4 +4,4 @@ test: ## Run automated tests. Requires go and terraform to be installed locally.
 
 .PHONY: pre-flight
 pre-flight: ## Run pre-flight checks against the example module.
-	cd examples/complete && terraform fmt && terraform validate && terraform plan && tflint -f compact --recursive
+	cd examples/complete && terraform init && terraform fmt && terraform validate && terraform plan && tflint -f compact --recursive
