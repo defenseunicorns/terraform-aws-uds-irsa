@@ -4,13 +4,13 @@ import (
 	"e2e_test/test/utils"
 	"encoding/json"
 	"fmt"
-	"net/url"
-	"strings"
-	"testing"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
 	terratest_aws "github.com/gruntwork-io/terratest/modules/aws"
 	"github.com/gruntwork-io/terratest/modules/terraform"
+	"net/url"
+	"strings"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,7 +38,6 @@ type policyDocument struct {
 }
 
 const (
-	awsRegion             = "us-west-2"
 	modulePath            = "examples/complete"
 	irsa_role_arn_output  = "role_arn"
 	irsa_role_name_output = "role_name"
@@ -47,7 +46,7 @@ const (
 	service_account       = "service-account"
 )
 
-
+var approvedRegions = []string{"us-east-1", "us-east-2", "us-west-1", "us-west-2"}
 
 // TestIAMRoleArnOutput verifies that the IAM role ARN output string is what we expect it to be based on the IAM role name.
 func TestIAMRoleArnOutput(t *testing.T) {
@@ -56,7 +55,8 @@ func TestIAMRoleArnOutput(t *testing.T) {
 	var (
 		awsAccountID  = terratest_aws.GetAccountId(t)
 		roleArnPrefix = fmt.Sprintf("arn:aws:iam::%s:role/", awsAccountID)
-		formattedName =  utils.FormatName(name, service_account)
+		formattedName = utils.FormatName(name, service_account)
+		awsRegion     = terratest_aws.GetRandomStableRegion(t, approvedRegions, nil)
 	)
 
 	testCases := []utils.TestCase{
@@ -66,7 +66,8 @@ func TestIAMRoleArnOutput(t *testing.T) {
 				TerraformDir: utils.CreateTempDir(t, modulePath),
 				Vars: map[string]interface{}{
 					"kubernetes_service_account": service_account, // Pass in tf var kubernetes_service_account
-					"name": name, // Pass in tf var name
+					"name":                       name,            // Pass in tf var name
+					"region":                     awsRegion,
 				},
 			},
 			TerraformOutputName: irsa_role_arn_output,
@@ -78,13 +79,14 @@ func TestIAMRoleArnOutput(t *testing.T) {
 				TerraformDir: utils.CreateTempDir(t, modulePath),
 				Vars: map[string]interface{}{
 					"irsa_iam_role_name": "should-override-default-name", // Pass in an IAM role name to override the default name
+					"region":             awsRegion,
 				},
 			},
 			TerraformOutputName: irsa_role_arn_output,
 			ExpectedOutputValue: roleArnPrefix + "should-override-default-name",
 		},
 	}
-	
+
 	assertRoleARN := func(t *testing.T, testCase utils.TestCase) {
 		t.Helper()
 		actualOutputValue := terraform.Output(t, testCase.TerraformOptions, testCase.TerraformOutputName)
@@ -102,6 +104,7 @@ func TestOIDCProviderArn(t *testing.T) {
 	var (
 		awsAccountID          = terratest_aws.GetAccountId(t)
 		oidcProviderArnPrefix = fmt.Sprintf("arn:aws:iam::%s:oidc-provider/", awsAccountID)
+		awsRegion             = terratest_aws.GetRandomStableRegion(t, approvedRegions, nil)
 	)
 
 	testCases := []utils.TestCase{
@@ -109,6 +112,9 @@ func TestOIDCProviderArn(t *testing.T) {
 			Name: "Assert the OIDC provider ARN in the assume role policy document for the IRSA role is what we expect it to be",
 			TerraformOptions: &terraform.Options{
 				TerraformDir: utils.CreateTempDir(t, modulePath),
+				Vars: map[string]interface{}{
+					"region": awsRegion,
+				},
 			},
 			ExpectedOutputValue: oidcProviderArnPrefix,
 		},
@@ -118,6 +124,7 @@ func TestOIDCProviderArn(t *testing.T) {
 				TerraformDir: utils.CreateTempDir(t, modulePath),
 				Vars: map[string]interface{}{
 					"oidc_provider_arn": "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url",
+					"region":            awsRegion,
 				},
 			},
 			ExpectedOutputValue: oidcProviderArnPrefix + "oidc.eks.us-west-2.amazonaws.com/id/pass-in-oidc-provider-url",
@@ -127,7 +134,7 @@ func TestOIDCProviderArn(t *testing.T) {
 	assertOIDCProviderArn := func(t *testing.T, testCase utils.TestCase) {
 		t.Helper()
 
-		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyDocument{})
+		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyDocument{}, awsRegion)
 
 		// Assert that the federated principal ARN value for the OIDC provider matches the expected output.
 		federatedPrincipal := assumeRolePolicy.Statement[0].Principal.Federated
@@ -143,12 +150,13 @@ func TestFullyQualifiedSubjects(t *testing.T) {
 	t.Parallel()
 
 	var (
-		keyAud = ":aud"
-	    keySub = ":sub"
+		keyAud    = ":aud"
+		keySub    = ":sub"
+		awsRegion = terratest_aws.GetRandomStableRegion(t, approvedRegions, nil)
 	)
 	expectedFullyQualifiedSubjects := map[string]interface{}{
-		keyAud : "sts.amazonaws.com",
-		keySub : "system:serviceaccount:" + namespace + ":" + service_account,
+		keyAud: "sts.amazonaws.com",
+		keySub: "system:serviceaccount:" + namespace + ":" + service_account,
 	}
 
 	testCases := []utils.TestCase{
@@ -156,7 +164,9 @@ func TestFullyQualifiedSubjects(t *testing.T) {
 			Name: "Assert the OIDC fully qualified subjects in the assume role policy document for the IRSA role is what we expect it to be",
 			TerraformOptions: &terraform.Options{
 				TerraformDir: utils.CreateTempDir(t, modulePath),
-				VarFiles:     []string{"example.tfvars"},
+				Vars: map[string]interface{}{
+					"region": awsRegion,
+				},
 			},
 			ExpectedOutputValue: expectedFullyQualifiedSubjects,
 		},
@@ -164,20 +174,20 @@ func TestFullyQualifiedSubjects(t *testing.T) {
 
 	assertOIDCFullyQualifiedSubjects := func(t *testing.T, testCase utils.TestCase) {
 		t.Helper()
-        
-		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyDocument{})
+
+		assumeRolePolicy := getAssumeRolePolicyDocument(t, testCase, policyDocument{}, awsRegion)
 		// Assert that the OIDC fully qualified subject matches the expected output.
 		fullyQualifiedSubjects := assumeRolePolicy.Statement[0].Condition.StringEquals
 		errorMessage := fmt.Sprintf("Test case '%s' failed", testCase.Name)
 
 		// Loop over the expected results to ensure all cases are validated
 		for key, value := range expectedFullyQualifiedSubjects {
-		  returnedValue := fullyQualifiedSubjects[key]
-		  // Strip the random guids from the service account name (if the returned value is a service account)
-		  if strings.Contains(fmt.Sprint(returnedValue), "system:serviceaccount") {
-			returnedValue = utils.StripServiceAccountGuid(fmt.Sprint(returnedValue))
-		  }
-		  assert.EqualValues(t, value, returnedValue, errorMessage)
+			returnedValue := fullyQualifiedSubjects[key]
+			// Strip the random guids from the service account name (if the returned value is a service account)
+			if strings.Contains(fmt.Sprint(returnedValue), "system:serviceaccount") {
+				returnedValue = utils.StripServiceAccountGuid(fmt.Sprint(returnedValue))
+			}
+			assert.EqualValues(t, value, returnedValue, errorMessage)
 		}
 	}
 
@@ -185,7 +195,7 @@ func TestFullyQualifiedSubjects(t *testing.T) {
 }
 
 // getAssumeRolePolicyDocument decodes and unmarshals the trust relationship policy for the created IRSA role.
-func getAssumeRolePolicyDocument(t *testing.T, testCase utils.TestCase, assumeRolePolicy policyDocument) policyDocument {
+func getAssumeRolePolicyDocument(t *testing.T, testCase utils.TestCase, assumeRolePolicy policyDocument, awsRegion string) policyDocument {
 	t.Helper()
 
 	// Fetch the IAM role policy document
