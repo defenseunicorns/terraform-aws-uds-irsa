@@ -1,14 +1,14 @@
 package utils
 
 import (
-	"os"
-	"sync"
-	"testing"
-    "strings"
-	"regexp"
 	"fmt"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 	testStructure "github.com/gruntwork-io/terratest/modules/test-structure"
+	"os"
+	"regexp"
+	"strings"
+	"sync"
+	"testing"
 )
 
 type TestCase struct {
@@ -55,6 +55,7 @@ func FormatName(name string, serviceAccount string) string {
 	result := fmt.Sprintf("%s-%s-%s", name, trimmedServiceAccount, "irsa")
 	return result
 }
+
 // Function for removing randomly generated hexadecimal characters from the role arn (required for testing in parallel)
 func StripHexadecimal(input string) string {
 	regex_hex := regexp.MustCompile(`-[0-9a-fA-F]+-irsa$`)

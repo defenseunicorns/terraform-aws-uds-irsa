@@ -24,3 +24,9 @@ variable "oidc_provider_arn" {
   type        = string
   default     = ""
 }
+
+variable "region" {
+  description = "The AWS region to deploy into"
+  type        = string
+  default     = "us-east-2"
+}
