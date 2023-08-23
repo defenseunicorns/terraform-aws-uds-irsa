@@ -3,13 +3,14 @@
     {
         ".":
         {
-            "changelog-path": "CHANGELOG.md",
-            "changelog-type": "github",
-            "release-type": "simple",
-            "bump-minor-pre-major": true,
-            "bump-patch-for-minor-pre-major": true,
-            "draft": false,
-            "prerelease": false
+          "changelog-path": "CHANGELOG.md",
+          "changelog-type": "github",
+          "release-type": "simple",
+          "bump-minor-pre-major": true,
+          "bump-patch-for-minor-pre-major": true,
+          "draft": false,
+          "prerelease": false,
+          "extra-files": ["oscal-component.yaml"]
         }
     },
     "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"

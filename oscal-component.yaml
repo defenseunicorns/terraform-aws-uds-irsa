@@ -1,0 +1,118 @@
+component-definition:
+  uuid: a73e28ba-d0ee-4a66-8214-d6352aa7f30d
+  metadata:
+    title: Terraform IRSA Module
+    last-modified: "2023-08-21T20:16:37Z"
+    # x-release-please-start-version
+    version: "0.0.2"
+    # x-release-please-end
+    oscal-version: 1.0.4
+    parties:
+      - uuid: f3cf70f8-ba44-4e55-9ea3-389ef24847d3
+        type: organization
+        name: Defense Unicorns
+        links:
+          - href: https://defenseunicorns.com
+            rel: website
+  components:
+    - uuid: 6883b79b-220c-445b-93de-0c842a802ad3
+      type: software
+      title: Terraform AWS IRSA UDS
+      description: |
+        Deployment of IRSA Module using Terraform
+      purpose: Provides a Secure Service Account for EKS
+      responsible-roles:
+        - role-id: provider
+          party-uuids:
+            - f3cf70f8-ba44-4e55-9ea3-389ef24847d3
+      control-implementations:
+        - uuid: 11c07458-8312-4a1b-95b8-5f65455fbda5
+          source: https://raw.githubusercontent.com/usnistgov/oscal-content/master/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog.json
+          description: NIST 800-53 Controls implemented.
+          implemented-requirements:
+            - uuid: ea0f2ea0-1192-48cb-9d57-05722ff4203e
+              control-id: ac-3
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: a306e65f-98cb-429e-abfb-900df1f3f0bb
+              control-id: ac-3.3
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: f1068f6e-dc88-494c-a3f6-54b425125b13
+              control-id: ac-3.7
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: 23868302-a6ad-40fa-a93b-69fe28b25284
+              control-id: ac-3.8
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. Upon removal from RBAC role access is immediately revoked. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: 6a2da343-00cf-4627-ae94-dca9c8a33c05
+              control-id: ac-5
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: 92caac30-0d62-4eba-a39b-4bca482e4b1b
+              control-id: ac-6
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: 4374de18-39b5-4b30-8674-b833712a9ed0
+              control-id: ac-6.1
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: c0103716-c7e0-4b66-9578-c08d1b016a50
+              control-id: ac-6.3
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: 20dd8e7b-1939-41c6-a25d-544697a4871c
+              control-id: ac-6.10
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: 9bdf4519-772d-4c55-a6f6-45d19f2a3bd7
+              control-id: au-2
+              description: >-
+                Event logging to CloudTrail is enabled on the IAM Roles by default. https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html
+            - uuid: ddb627eb-ea07-41d8-8d7b-daccb15ecdb5
+              control-id: au-3
+              description: >-
+                Event logging to CloudTrail is enabled on the IAM Roles by default. https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html
+            - uuid: d2bbea26-c749-49c8-a6c9-d8630ddcd1ba
+              control-id: au-3.1
+              description: >-
+                Event logging to CloudTrail is enabled on the IAM Roles by default. https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html
+            - uuid: 8e02158b-6e48-4ab8-a63f-07ce21d64ea0
+              control-id: au-8
+              description: >-
+                Event logging to CloudTrail is enabled on the IAM Roles by default. https://docs.aws.amazon.com/IAM/latest/UserGuide/cloudtrail-integration.html
+            - uuid: ae241c21-13c9-4a19-920c-636dfc587a1b
+              control-id: cm-2
+              description: >-
+                Terraform is used to create the baseline configuration and stores the configuration in a state file. https://developer.hashicorp.com/terraform/language/state
+            - uuid: 95a065ad-d535-41bc-9d8b-4621338ce610
+              control-id: cm-2.2
+              description: >-
+                Terraform is used to create the baseline configuration and stores the configuration in a state file. https://developer.hashicorp.com/terraform/language/state
+            - uuid: 3ff28b08-41dc-4a9d-bdc1-66c91570ed6e
+              control-id: cm-2.3
+              description: >-
+                S3 versioning is enabled on the S3 Bucket where Terraform state is stored. This provides versioning for rollbacks
+                by restoring the previous versions of the state file. https://developer.hashicorp.com/terraform/language/state
+                https://docs.aws.amazon.com/AmazonS3/latest/userguide/Versioning.html
+            - uuid: 8b54c11d-0a02-4ae0-9233-e745581a2c8e
+              control-id: ia-5
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. For other services to access EKS they will need access within
+                their IAM role. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: 8ae3ace6-36c2-48e6-a234-3ef30874e3b1
+              control-id: ia-9
+              description: >-
+                Access to resources from EKS is controlled by RBAC AWS IAM Roles. For other services to access EKS they will need access within
+                their IAM role. https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html
+            - uuid: 35709e0e-4c74-4eec-9076-1eb451a75a5c
+              control-id: sa-10
+              description: >-
+                Terraform is used to create the baseline configuration and stores the configuration in a state file. https://developer.hashicorp.com/terraform/language/state
+  back-matter:
+    resources:
+      - uuid: 7bc73927-633b-42ba-bc83-89f4e910cb26
+        title: Terraform AWS IRSA UDS
+        rlinks:
+          - href: https://github.com/defenseunicorns/terraform-aws-uds-irsa
