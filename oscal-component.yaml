@@ -4,7 +4,7 @@ component-definition:
     title: Terraform IRSA Module
     last-modified: "2023-08-21T20:16:37Z"
     # x-release-please-start-version
-    version: "0.0.2"
+    version: "0.0.3"
     # x-release-please-end
     oscal-version: 1.0.4
     parties:
